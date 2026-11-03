@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой в GitHub
+  workflow_dispatch:
 
 jobs:
   build-android:
@@ -26,18 +26,15 @@ jobs:
     - name: Set up Android SDK & NDK
       uses: android-actions/setup-android@v4
       with:
-        packages: '' # Исправление: отключает поиск устаревшего пакета 'tools'
+        packages: ''
 
-    # Установка NDK и CMake, которые необходимы движку для сборки C++ части (libvm_engine.so)
     - name: Install NDK and CMake
       run: |
         sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1"
 
-    - name: Grant Execute Permission for Gradle
-      run: chmod +x gradlew
-
+    # Вместо chmod устаревшего gradlew, используем предустановленный gradle для сборки проекта
     - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      run: gradle assembleDebug
 
     - name: Upload Android APK
       uses: actions/upload-artifact@v4
@@ -53,7 +50,6 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # Для сборки CLI-версии под ARM64 на стандартных серверах GitHub (x86_64) нужен кросс-компилятор
     - name: Install Cross-Compiler
       run: |
         sudo apt-get update
@@ -62,7 +58,6 @@ jobs:
     - name: Grant Execute Permission for CLI Script
       run: chmod +x build_cli.sh
 
-    # Модифицируем скрипт сборки на лету, чтобы он использовал кросс-компилятор aarch64 для ARM64 устройств
     - name: Compile CLI Binary
       run: |
         sed -i 's/g++/aarch64-linux-gnu-g++/g' build_cli.sh
