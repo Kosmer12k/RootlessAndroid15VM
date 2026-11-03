@@ -22,11 +22,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK & NDK
-        uses: android-actions/setup-android@v3
-        with:
-          cmake-version: 3.22.1
-          ndk-version: 25.1.8937393
+      - name: Download & Setup Android NDK Manually
+        run: |
+          echo "Downloading Android NDK r25c..."
+          wget -q https://dl.google.com/android/repository/android-ndk-r25c-linux.zip
+          unzip -q android-ndk-r25c-linux.zip -d $HOME/
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r25c" >> $GITHUB_ENV
+          echo "ndk.dir=$HOME/android-ndk-r25c" >> local.properties
 
       - name: Make Gradle Wrapper Executable
         run: |
