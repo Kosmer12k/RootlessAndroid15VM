@@ -32,7 +32,13 @@ jobs:
       run: |
         sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1"
 
-    # Вместо chmod устаревшего gradlew, используем предустановленный gradle для сборки проекта
+    # Исправление ошибки компиляции движка (redefinition of 'fd') прямо в коде
+    - name: Patch Source Code Bugs
+      run: |
+        sed -i 's/int fd = syscall(__NR_memfd_create/int memfd = syscall(__NR_memfd_create/g' engine/ipc/virtual_binder.cpp
+        sed -i 's/int fd = ASharedMemory_create/int memfd = ASharedMemory_create/g' engine/ipc/virtual_binder.cpp
+        sed -i 's/return fd;/return memfd;/g' engine/ipc/virtual_binder.cpp
+
     - name: Build Debug APK
       run: gradle assembleDebug
 
