@@ -1,52 +1,79 @@
-name: Build Android APK
+name: Build RootlessAndroid15VM
 
 on:
   push:
-    branches: [main]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [main]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
-  build:
-    name: Build debug APK (arm64-v8a)
+  build-android:
+    name: Build Android APK & Native Engine
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK, NDK, and CMake
-        run: |
-          sdkmanager --install \
-            "platforms;android-35" \
-            "build-tools;35.0.0" \
-            "ndk;26.3.11579264" \
-            "cmake;3.22.1"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Setup Android NDK
+        uses: n2m2/setup-ndk@v1
         with:
-          gradle-version: '8.7'
+          ndk-version: r25c
 
-      - name: Build debug APK
-        run: gradle --no-daemon :app:assembleDebug
+      - name: Make Gradle Wrapper Executable
+        run: |
+          cd RootlessAndroid15VM-main
+          if [ -f "./gradlew" ]; then
+            chmod +x gradlew
+          else
+            gradle wrapper
+            chmod +x gradlew
+          fi
 
-      - name: Upload APK
+      - name: Build Debug APK
+        run: |
+          cd RootlessAndroid15VM-main
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RootlessAndroid15VM-debug-arm64
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          name: RootlessAndroid15VM-Debug-APK
+          path: RootlessAndroid15VM-main/app/build/outputs/apk/debug/*.apk
+
+  build-cli:
+    name: Build Native Engine (CLI Engine)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Native Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build libegl1-mesa-dev libgles2-mesa-dev
+
+      - name: Build C++ Engine CLI
+        run: |
+          cd RootlessAndroid15VM-main
+          chmod +x build_cli.sh setup_rom.sh patch_rootfs.py
+          mkdir -p build_cli
+          cd build_cli
+          cmake -DCMAKE_BUILD_TYPE=Release ../engine
+          make -j$(nproc)
+
+      - name: Upload Engine CLI Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: Native-Engine-CLI
+          path: |
+            RootlessAndroid15VM-main/build_cli/vm_engine_cli
+            RootlessAndroid15VM-main/build_cli/*.so
