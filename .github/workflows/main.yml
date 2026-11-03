@@ -1,60 +1,74 @@
-name: RootlessAndroid15VM Build
+name: Build RootlessAndroid15VM
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch:
+  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой в GitHub
 
 jobs:
-  build-project:
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Set up Java 17
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
-        distribution: 'temurin'
+        distribution: 'zulu'
         java-version: '17'
         cache: 'gradle'
 
-    - name: Setup Android SDK & NDK
+    - name: Set up Android SDK & NDK
       uses: android-actions/setup-android@v3
-      with:
-        # Устанавливаем NDK, так как проект активно использует CMake для сборки libvm_engine.so
-        ndk-version: '27.0.12077973' 
 
-    - name: Grant Execute Permission for Scripts
+    # Установка NDK и CMake, которые необходимы движку для сборки C++ части (libvm_engine.so)
+    - name: Install NDK and CMake
       run: |
-        chmod +x gradlew
-        chmod +x build_cli.sh
+        sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1"
 
-    - name: Build Android App (APK & Native .so)
+    - name: Grant Execute Permission for Gradle
+      run: chmod +x gradlew
+
+    - name: Build Debug APK
       run: ./gradlew assembleDebug
 
-    - name: Build Standalone CLI Test Runner
-      # Эмулируем окружение для локального скрипта компиляции CLI
-      run: |
-        export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973
-        ./build_cli.sh
-      continue-on-error: true # Скрипт CLI опционален, если он завязан на Termux-окружение
-
-    - name: Upload APK Artifact
+    - name: Upload Android APK
       uses: actions/upload-artifact@v4
       with:
-        name: RootlessVM-Debug-APK
+        name: rootless-vm-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
-        retention-days: 14
 
-    - name: Upload CLI Runner (If compiled)
+  build-cli:
+    name: Build Standalone CLI Runner
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # Для сборки CLI-версии под ARM64 на стандартных серверах GitHub (x86_64) нужен кросс-компилятор
+    - name: Install Cross-Compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++-aarch64-linux-gnu cmake
+
+    - name: Grant Execute Permission for CLI Script
+      run: chmod +x build_cli.sh
+
+    # Модифицируем скрипт сборки на лету, чтобы он использовал кросс-компилятор aarch64 для ARM64 устройств
+    - name: Compile CLI Binary
+      run: |
+        sed -i 's/g++/aarch64-linux-gnu-g++/g' build_cli.sh
+        ./build_cli.sh
+
+    - name: Upload CLI Binary
       uses: actions/upload-artifact@v4
       with:
-        name: vm_cli_runner
-        path: ./vm_cli_runner
-        retention-days: 14
-        if-no-files-found: ignore
+        name: vm-cli-runner
+        path: vm_cli_runner
         
