@@ -24,7 +24,9 @@ jobs:
         cache: 'gradle'
 
     - name: Set up Android SDK & NDK
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@v4
+      with:
+        packages: '' # Исправление: отключает поиск устаревшего пакета 'tools'
 
     # Установка NDK и CMake, которые необходимы движку для сборки C++ части (libvm_engine.so)
     - name: Install NDK and CMake
