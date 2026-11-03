@@ -22,13 +22,14 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Download & Setup Android NDK Manually
+      - name: Download & Setup Android NDK r26b Manually
         run: |
-          echo "Downloading Android NDK r25c..."
-          wget -q https://dl.google.com/android/repository/android-ndk-r25c-linux.zip
-          unzip -q android-ndk-r25c-linux.zip -d $HOME/
-          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r25c" >> $GITHUB_ENV
-          echo "ndk.dir=$HOME/android-ndk-r25c" >> local.properties
+          echo "Downloading Android NDK r26b..."
+          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
+          unzip -q android-ndk-r26b-linux.zip -d $HOME/
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r26b" >> $GITHUB_ENV
+          echo "ndk.dir=$HOME/android-ndk-r26b" >> local.versions || true
+          echo "ndk.dir=$HOME/android-ndk-r26b" >> local.properties
 
       - name: Make Gradle Wrapper Executable
         run: |
