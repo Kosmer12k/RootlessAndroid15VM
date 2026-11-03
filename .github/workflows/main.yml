@@ -28,16 +28,17 @@ jobs:
       with:
         packages: ''
 
+    # Явно ставим NDK 26, который запрашивает Gradle проекта, чтобы избежать конфликтов версий
     - name: Install NDK and CMake
       run: |
-        sdkmanager --install "ndk;25.1.8937393" "cmake;3.22.1"
+        sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1"
 
-    # Исправление ошибки компиляции движка (redefinition of 'fd') прямо в коде
+    # Исправляем конфликт с memfd_create для современных NDK r26+
+    # Мы просто комментируем строки, где проект пытается объявить системную функцию вручную
     - name: Patch Source Code Bugs
       run: |
-        sed -i 's/int fd = syscall(__NR_memfd_create/int memfd = syscall(__NR_memfd_create/g' engine/ipc/virtual_binder.cpp
-        sed -i 's/int fd = ASharedMemory_create/int memfd = ASharedMemory_create/g' engine/ipc/virtual_binder.cpp
-        sed -i 's/return fd;/return memfd;/g' engine/ipc/virtual_binder.cpp
+        sed -i 's/int memfd_create(const char \*name, unsigned int flags);/\/\/ Системная функция уже есть в NDK r26/g' engine/ipc/virtual_binder.cpp
+        sed -i 's/int fd = syscall(__NR_memfd_create/\/\/ int fd = syscall(__NR_memfd_create/g' engine/ipc/virtual_binder.cpp
 
     - name: Build Debug APK
       run: gradle assembleDebug
